@@ -8,7 +8,7 @@ import pickle
 import smtplib
 import sys
 import unicodedata
-from datetime import datetime
+from datetime import date, datetime
 from pathlib import Path
 
 
@@ -372,9 +372,12 @@ def do_meetngo():
 
 class Student:
 
+    title_row = ["Horodateur", "Nom / Name", "Prénom / Surname", "Email", "Votre Nationalité ? Where are you from ?", "Votre.Vos langue.s maternelle.s ou bilingue.s / Your Language.s spoken fluently or mothertongue.s ", "Langue.s recherchée.s / Language.s wanted", "Age", "Sexe / Gender", "Université / University", "A partir de quand êtes vous disponible ?"]
+
     def __init__(self, row):
-        self.first_name = row[1].strip()
-        self.family_name = row[2].strip()
+        """Initialize a student from a csv row."""
+        self.family_name = row[1].strip()
+        self.first_name = row[2].strip()
         self.email = row[3].strip()
         self.nationality = row[4]
         self.known_lang = row[5].split(';')
@@ -388,14 +391,24 @@ class Student:
 
     @property
     def known_languages(self):
+        """Return a printable list of known language."""
         return ', '.join(self.known_lang)
 
     @property
     def wanted_languages(self):
+        """Return a printable list of wanted language."""
         return ', '.join(self.wanted_lang)
 
+    @property
+    def as_row(self):
+        """Return a students as an row that can be writen in a csv file."""
+        return [date.today().strftime('%Y/%m/%d'), self.family_name,
+                self.first_name, self.email, self.nationality,
+                ';'.join(self.known_lang), ';'.join(self.wanted_lang), self.age,
+                self.gender, self.university, self.avail]
+
     def __str__(self):
-        return ' - {first_name} {family_name}, {email}, parle {known_lang} et veux apprendre {wanted_lang}'.format_map(self.__dict__)
+        return ' - {first_name} {family_name}, {email}, parle {known_lang} et veut apprendre {wanted_lang}'.format_map(self.__dict__)
 
     def look_like(self, other):
         """Return `True` if `other` might be the same person."""
@@ -425,7 +438,13 @@ ___________                  .___
                \/     \/      \/    \/      \/\n''', 'blue', '', 'bold'))
 
     students = Group(Student)
-    # TODO last run
+
+    if len(list(Path(config_t['répertoire csv']).glob('*{}*'.format(config_t['étudiants seuls'])))) > 0:
+        if ask("Un fichier d'étudiants seuls existe, voulez-vous l'utilisez ?"):
+            alones_file = find_file(config_t['étudiants seuls'],
+                                    config_t['répertoire csv'])
+            students.load(alones_file, 1)
+
     students_file = find_file(config_t['fichier étudiants'],
                               config_t['répertoire csv'])
     print('« {} » sera utilisé ajouter de nouveaux étudiants.'.format(students_file))
@@ -433,18 +452,33 @@ ___________                  .___
 
     tandems = []
     alones = []
-    i = 0
     for s in sorted(students, key=lambda x: len(x.possible_tandems(students))):
         if s.partner is None:
-            i += 1
             if len(s.possible_tandems(students)) < 1:
                 alones.append(s)
-                print(i)
             else:
                 s.partner = s.possible_tandems(students)[0]
                 s.partner.partner = s
                 tandems.append((s, s.partner))
     print("\nIl y a {} tandems, et {} étudiants se retrouvent seuls.".format(len(tandems), len(alones)))
+
+    with open(config_t['répertoire csv'] + '/' + config_t['liste des tandems'],
+              'a', newline='') as tandems_file:  # TODO: ask to append
+        writer = csv.writer(tandems_file, quoting=csv.QUOTE_ALL)
+        writer.writerow(Student.title_row)
+        print('Écriture de la liste des tandems dans « {} ».'.format(tandems_file.name[2:]))
+        for tandem in tandems:
+            writer.writerow(tandem[0].as_row)
+            writer.writerow(tandem[1].as_row)
+            writer.writerow([])
+
+    with open(config_t['répertoire csv'] + '/' + config_t['étudiants seuls'],
+              'w', newline='') as alones_file:  # TODO: ask to override
+        writer = csv.writer(alones_file, quoting=csv.QUOTE_ALL)
+        writer.writerow(Student.title_row)
+        print('Écriture de la liste des étudiant seuls dans « {} ».'.format(alones_file.name[2:]))
+        for alone in alones:
+            writer.writerow(alone.as_row)
 
     # TODO emails
 
@@ -461,21 +495,19 @@ if __name__ == '__main__':
         else:
             print('Manuel bla bla bla')  # TODO
     else:
-#        menu = Menu()
-#        menu.title = '''\
-#.___        __ ___________ ________
-#|   | _____/  |\_   _____//  _____/______   ____
-#|   |/    \   __\    __)_/   \  __\_  __ \_/ __ \\
-#|   |   |  \  | |        \    \_\  \  | \/\  ___/
-#|___|___|  /__|/_______  /\______  /__|    \___  >
-#         \/            \/        \/            \/'''
-#        menu.subtitle = 'Outil Pour les Programmes Annuels d'IntEGre'
-#        menu.items = [("Meet'N'Go", do_meetngo),
-#                      #('Parainage', do_parainage),
-#                      ('Tandem', do_tandem),
-#                      ('Quitter', exit)]
-#        menu.display(only_once=True)
-
-        do_tandem()
+        menu = Menu()
+        menu.title = '''\
+.___        __ ___________ ________
+|   | _____/  |\_   _____//  _____/______   ____
+|   |/    \   __\    __)_/   \  __\_  __ \_/ __ \\
+|   |   |  \  | |        \    \_\  \  | \/\  ___/
+|___|___|  /__|/_______  /\______  /__|    \___  >
+        \/            \/        \/            \/'''
+        menu.subtitle = "Outil Pour les Programmes Annuels d'IntEGre"
+        menu.items = [("Meet'N'Go", do_meetngo),
+                      #('Parainage', do_parainage),
+                      ('Tandem', do_tandem),
+                      ('Quitter', exit)]
+        do_tandem()#menu.display(only_once=True)
 
     print()  # final new line, IMHO it look cleaner with it
