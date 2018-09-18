@@ -51,10 +51,10 @@ def find_file(name, folder='.'):
     if len(files) == 1:
         return files[0]
     elif len(files) < 1:
-        input('Aucun fichier ne correspond à « {} ».'.format(name))
+        input(color('\nAucun fichier ne correspond à « {} ».'.format(name), 'red'))
         exit()
 
-    print('Il y a {} fichiers qui correspondent à « {} » :'.format(len(files), name))
+    print('\nIl y a {} fichiers qui correspondent à « {} » :'.format(len(files), name))
     print('\n'.join(['  {}) {}'.format(i+1, f) for i, f in enumerate(files)]))
     try:
         ans = int(input('\nSaisir votre choix (défaut=1): ')) - 1
@@ -70,12 +70,13 @@ def generate_emails(data, subject, template_path):
     with open(template_path) as tmpl:
         template = tmpl.read()
     emails = []
-    for recipient in recipients:
-        email = email.message.EmailMessage()
-        email['To'] = data['recipient'].email
-        email['Subject'] = subject
-        email.set_content(template.format_map(data))
-        emails.append(email)
+    for datum in data:
+        msg = email.message.EmailMessage()
+        msg['To'] = datum['recipient'].email
+        msg['Subject'] = subject
+        msg.set_content(template.format_map(datum))
+        emails.append(msg)
+    return emails
 
 
 def send_emails(emails):
@@ -83,7 +84,7 @@ def send_emails(emails):
     with smtplib.SMTP('smtp.phpnet.org', 587) as smtp:
         smtp.starttls()
 
-        print('Connexion à integre-grenoble.org')
+        print('\nConnexion à integre-grenoble.org')
         username = input("Nom d'utilisateur : ").strip()
         if not username.endswith('@integre-grenoble.org'):
             username += '@integre-grenoble.org'
@@ -165,7 +166,7 @@ class Group(set):
                     print('Copie suprimée !')
                     exist = True
                 else:
-                    input('Réponse prise en compte. Ces deux personnes sont différentes.')
+                    print('Réponse prise en compte. Ces deux personnes sont différentes.')
         if not exist:
             self.add(person)
 
@@ -239,6 +240,7 @@ class Mentor:
 
 class Mentee:
 
+    print(email)
     def __init__(self, row):
         """Initialize a mentee from a csv row."""
         self.surname = row[1].strip()
@@ -382,7 +384,7 @@ class Student:
         self.nationality = row[4]
         self.known_lang = row[5].split(';')
         self.wanted_lang = row[6].split(';')
-        self.age = row[7].strip()
+        self.age = int(row[7].strip())
         self.gender = row[8]
         self.university = row[9]
         self.avail = row[10]
@@ -401,7 +403,7 @@ class Student:
 
     @property
     def as_row(self):
-        """Return a students as an row that can be writen in a csv file."""
+        """Return a students as an row that can be writen in a   csv file."""
         return [date.today().strftime('%Y/%m/%d'), self.family_name,
                 self.first_name, self.email, self.nationality,
                 ';'.join(self.known_lang), ';'.join(self.wanted_lang), self.age,
@@ -424,7 +426,7 @@ class Student:
                and set(other.known_lang).intersection(self.wanted_lang)\
                and set(other.wanted_lang).intersection(self.known_lang):
                 tandems.append(other)
-        return tandems
+        return sorted(tandems, key=lambda x: (abs(self.age - x.age)))
 
 
 def do_tandem():
@@ -460,27 +462,48 @@ ___________                  .___
                 s.partner = s.possible_tandems(students)[0]
                 s.partner.partner = s
                 tandems.append((s, s.partner))
-    print("\nIl y a {} tandems, et {} étudiants se retrouvent seuls.".format(len(tandems), len(alones)))
+    print('\nIl y a {} tandems, et {} étudiants se retrouvent seuls.'.format(len(tandems), len(alones)))
 
+    if len(list(Path(config_t['répertoire csv']).glob('*{}*'.format(config_t['liste des tandems'])))) > 0:
+        input(color("Le fichier {} est sur le point d'être écrasé.".format(config_t['répertoire csv'][:2] + '/' + config_t['liste des tandems']), 'red'))
     with open(config_t['répertoire csv'] + '/' + config_t['liste des tandems'],
-              'a', newline='') as tandems_file:  # TODO: ask to append
+              'w', newline='') as tandems_file:
         writer = csv.writer(tandems_file, quoting=csv.QUOTE_ALL)
         writer.writerow(Student.title_row)
         print('Écriture de la liste des tandems dans « {} ».'.format(tandems_file.name[2:]))
         for tandem in tandems:
+            writer.writerow([])
             writer.writerow(tandem[0].as_row)
             writer.writerow(tandem[1].as_row)
-            writer.writerow([])
 
     with open(config_t['répertoire csv'] + '/' + config_t['étudiants seuls'],
-              'w', newline='') as alones_file:  # TODO: ask to override
+              'w', newline='') as alones_file:
         writer = csv.writer(alones_file, quoting=csv.QUOTE_ALL)
         writer.writerow(Student.title_row)
         print('Écriture de la liste des étudiant seuls dans « {} ».'.format(alones_file.name[2:]))
         for alone in alones:
             writer.writerow(alone.as_row)
 
-    # TODO emails
+    with_partner = []
+    for pair in tandems:
+        with_partner.append(pair[0])
+        with_partner.append(pair[1])
+
+    emails = []
+    if (len(with_partner) > 0 and ask('Voulez-vous envoyer un e-mail au étudiants qui ont un tandem ?')):
+        emails += generate_emails(
+            [{'recipient': s, 'tandem': s.partner} for s in with_partner],
+            "IntEGre - programme Tandem",  # TODO: mail subject
+            config_t['répertoire modèles mails'] + '/' + config_t['modèle mail tandem']
+        )
+    if (len(alones) > 0 and ask('Voulez-vous envoyer un e-mail au étudiants seuls ?')):
+        emails += generate_emails(
+            [{'recipient': s} for s in alones],
+            "IntEGre - programme Tandem",  # TODO: mail subject
+            config_t['répertoire modèles mails'] + '/' + config_t['modèle mail seul']
+        )
+    if len(emails) > 0:
+        send_emails(emails)
 
 
 
@@ -502,7 +525,7 @@ if __name__ == '__main__':
 |   |/    \   __\    __)_/   \  __\_  __ \_/ __ \\
 |   |   |  \  | |        \    \_\  \  | \/\  ___/
 |___|___|  /__|/_______  /\______  /__|    \___  >
-        \/            \/        \/            \/'''
+         \/            \/        \/            \/'''
         menu.subtitle = "Outil Pour les Programmes Annuels d'IntEGre"
         menu.items = [("Meet'N'Go", do_meetngo),
                       #('Parainage', do_parainage),
