@@ -225,7 +225,7 @@ class Mentor:
     # TODO: must save on a csv-like format
     def save(self):
         """Pickle mentor information for later use."""
-        path = pathlib.Path(config['Data']['top folder'])
+        path = Path(config['Data']['top folder'])
         path = path / config['Data']['mentors folder']
         if not path.exists():
             path.mkdir(parents=True)
@@ -303,7 +303,7 @@ class Mentee:
     # TODO: must save on a csv-like format
     def save(self):
         """Pickle mentee information for later use."""
-        path = pathlib.Path(config['Data']['top folder'])
+        path = Path(config['Data']['top folder'])
         path = path / config['Data']['mentees folder']
         if not path.exists():
             path.mkdir(parents=True)
@@ -389,6 +389,7 @@ class Student:
         self.university = row[9]
         self.avail = row[10]
 
+        self.alreay_alone = False
         self.partner = None
 
     @property
@@ -446,6 +447,8 @@ ___________                  .___
             alones_file = find_file(config_t['étudiants seuls'],
                                     config_t['répertoire csv'])
             students.load(alones_file, 1)
+    for s in students:
+        s.alreay_alone = True
 
     students_file = find_file(config_t['fichier étudiants'],
                               config_t['répertoire csv'])
@@ -454,7 +457,7 @@ ___________                  .___
 
     tandems = []
     alones = []
-    for s in sorted(students, key=lambda x: len(x.possible_tandems(students))):
+    for s in sorted(students, key=lambda x: len(x.possible_tandems(students))*100 + x.age):
         if s.partner is None:
             if len(s.possible_tandems(students)) < 1:
                 alones.append(s)
@@ -465,7 +468,7 @@ ___________                  .___
     print('\nIl y a {} tandems, et {} étudiants se retrouvent seuls.'.format(len(tandems), len(alones)))
 
     if len(list(Path(config_t['répertoire csv']).glob('*{}*'.format(config_t['liste des tandems'])))) > 0:
-        input(color("Le fichier {} est sur le point d'être écrasé.".format(config_t['répertoire csv'][:2] + '/' + config_t['liste des tandems']), 'red'))
+        input(color("Le fichier {} est sur le point d'être écrasé.".format(config_t['répertoire csv'][2:] + '/' + config_t['liste des tandems']), 'red'))
     with open(config_t['répertoire csv'] + '/' + config_t['liste des tandems'],
               'w', newline='') as tandems_file:
         writer = csv.writer(tandems_file, quoting=csv.QUOTE_ALL)
@@ -489,16 +492,30 @@ ___________                  .___
         with_partner.append(pair[0])
         with_partner.append(pair[1])
 
+    new_alones = []
+    already_alones = []
+    for alone in alones:
+        if alone.alreay_alone:
+            already_alones.append(pair[0])
+        else:
+            new_alones.append(pair[1])
+
     emails = []
-    if (len(with_partner) > 0 and ask('Voulez-vous envoyer un e-mail au étudiants qui ont un tandem ?')):
+    if (len(with_partner) > 0 and ask('Voulez-vous envoyer un e-mail aux étudiants qui ont un tandem ?')):
         emails += generate_emails(
             [{'recipient': s, 'tandem': s.partner} for s in with_partner],
             "IntEGre - programme Tandem",  # TODO: mail subject
             config_t['répertoire modèles mails'] + '/' + config_t['modèle mail tandem']
         )
-    if (len(alones) > 0 and ask('Voulez-vous envoyer un e-mail au étudiants seuls ?')):
+    if (len(new_alones) > 0 and ask('Voulez-vous envoyer un e-mail aux nouveaux étudiants seuls ?')):
         emails += generate_emails(
-            [{'recipient': s} for s in alones],
+            [{'recipient': s} for s in new_alones],
+            "IntEGre - programme Tandem",  # TODO: mail subject
+            config_t['répertoire modèles mails'] + '/' + config_t['modèle mail seul']
+        )
+    if (len(already_alones) > 0 and ask('Voulez-vous envoyer un e-mail aux étudiants qui était déjà seuls ?')):
+        emails += generate_emails(
+            [{'recipient': s} for s in already_alones],
             "IntEGre - programme Tandem",  # TODO: mail subject
             config_t['répertoire modèles mails'] + '/' + config_t['modèle mail seul']
         )
