@@ -407,7 +407,7 @@ class Student:
         return [date.today().strftime('%Y/%m/%d'), self.family_name,
                 self.first_name, self.email, self.nationality,
                 ';'.join(self.known_lang), ';'.join(self.wanted_lang), self.age,
-                self.gender, self.university, self.avail]
+                self.university, self.avail]
 
     def __str__(self):
         return ' - {first_name} {family_name}, {email}, parle {known_lang} et veut apprendre {wanted_lang}'.format_map(self.__dict__)
@@ -466,7 +466,7 @@ ___________                  .___
                 tandems.append((s, s.partner))
     print('\nIl y a {} tandems, et {} étudiants se retrouvent seuls.'.format(len(tandems), len(alones)))
 
-    if len(list(Path(config_t['répertoire csv']).glob('*{}*'.format(config_t['liste des tandems'])))) > 0:
+    if len(list(Path(config_t['répertoire csv']).glob('{}'.format(config_t['liste des tandems'])))) > 0:
         input(color("Le fichier {} est sur le point d'être écrasé.".format(config_t['répertoire csv'][2:] + '/' + config_t['liste des tandems']), 'red'))
     with open(config_t['répertoire csv'] + '/' + config_t['liste des tandems'],
               'w', newline='') as tandems_file:
@@ -512,7 +512,7 @@ ___________                  .___
             "IntEGre - programme Tandem",  # TODO: mail subject
             config_t['répertoire modèles mails'] + '/' + config_t['modèle mail seul']
         )
-    if (len(already_alones) > 0 and ask('Voulez-vous envoyer un e-mail aux étudiants qui était déjà seuls ?')):
+    if (len(already_alones) > 0 and ask('Voulez-vous envoyer un e-mail aux étudiants qui était déjà seuls ?', False)):
         emails += generate_emails(
             [{'recipient': s} for s in already_alones],
             "IntEGre - programme Tandem",  # TODO: mail subject
