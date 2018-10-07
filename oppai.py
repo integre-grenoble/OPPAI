@@ -374,20 +374,19 @@ def do_meetngo():
 
 class Student:
 
-    title_row = ["Horodateur", "Nom / Name", "Prénom / Surname", "Email", "Votre Nationalité ? Where are you from ?", "Votre.Vos langue.s maternelle.s ou bilingue.s / Your Language.s spoken fluently or mothertongue.s ", "Langue.s recherchée.s / Language.s wanted", "Age", "Sexe / Gender", "Université / University", "A partir de quand êtes vous disponible ?"]
+    title_row = ["Timestamp", "Username", "Prénom", "Nom de famille", "Votre Nationalité ?", "Langues parlées", "Langues que tu veux apprendre", "Age", "Université / University", "A partir de quand êtes vous disponible ?"]
 
     def __init__(self, row):
         """Initialize a student from a csv row."""
-        self.family_name = row[1].strip()
+        self.email = row[1].strip()
         self.first_name = row[2].strip()
-        self.email = row[3].strip()
+        self.family_name = row[3].strip()
         self.nationality = row[4]
         self.known_lang = row[5].split(';')
         self.wanted_lang = row[6].split(';')
         self.age = int(row[7].strip())
-        self.gender = row[8]
-        self.university = row[9]
-        self.avail = row[10]
+        self.university = row[8]
+        self.avail = row[9]
 
         self.alreay_alone = False
         self.partner = None
