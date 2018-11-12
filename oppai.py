@@ -404,10 +404,9 @@ class Student:
     @property
     def as_row(self):
         """Return a students as an row that can be writen in a   csv file."""
-        return [date.today().strftime('%Y/%m/%d'), self.family_name,
-                self.first_name, self.email, self.nationality,
-                ';'.join(self.known_lang), ';'.join(self.wanted_lang), self.age,
-                self.university, self.avail]
+        return [date.today().strftime('%Y/%m/%d'), self.email, self.first_name,
+                self.family_name, self.nationality, ';'.join(self.known_lang),
+                ';'.join(self.wanted_lang), self.age, self.university, self.avail]
 
     def __str__(self):
         return ' - {first_name} {family_name}, {email}, parle {known_lang} et veut apprendre {wanted_lang}'.format_map(self.__dict__)
