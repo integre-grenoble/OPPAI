@@ -93,7 +93,7 @@ def send_emails(emails):
             try:
                 smtp.login(username, getpass.getpass('Mot de passe : '))
                 success = True
-            except SMTPAuthenticationError:
+            except smtplib.SMTPAuthenticationError:
                 if not ask("Erreur d'authentification. Voulez-vous reéssayer ?"):
                     return
 
