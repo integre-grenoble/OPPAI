@@ -84,11 +84,18 @@ def send_emails(emails):
     with smtplib.SMTP('smtp.phpnet.org', 587) as smtp:
         smtp.starttls()
 
-        print('\nConnexion à integre-grenoble.org')
-        username = input("Nom d'utilisateur : ").strip()
-        if not username.endswith('@integre-grenoble.org'):
-            username += '@integre-grenoble.org'
-        smtp.login(username, getpass.getpass('Mot de passe : '))
+        success = False
+        while not success:
+            print('\nConnexion à integre-grenoble.org')
+            username = input("Nom d'utilisateur : ").strip()
+            if not username.endswith('@integre-grenoble.org'):
+                username += '@integre-grenoble.org'
+            try:
+                smtp.login(username, getpass.getpass('Mot de passe : '))
+                success = True
+            except SMTPAuthenticationError:
+                if not ask("Erreur d'authentification. Voulez-vous reéssayer ?"):
+                    return
 
         for msg in emails:
             msg['From'] = username
@@ -185,6 +192,8 @@ class Group(set):
 ####################          Meet'N'Go             ####################
 
 class Mentor:
+
+    title_row = ["Timestamp", "Username", "Prénom", "Nom de famille", "Votre Nationalité ?", "Langues parlées", "Langues que tu veux apprendre", "Age", "Université / University", "A partir de quand êtes vous disponible ?"]
 
     def __init__(self, row):
         """Initialize a mentor from a csv row."""
